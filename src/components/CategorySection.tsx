@@ -2,6 +2,7 @@ import styled from '@emotion/styled';
 import { useEffect, useState } from 'react';
 import { fetchThemes } from '@/api/theme';
 import type { Theme } from '@/types/theme';
+import Spinner from '@/components/Spinner';
 
 const SectionWrapper = styled.section`
   padding: ${({ theme }) => theme.spacing.spacing4};
@@ -47,33 +48,6 @@ const Label = styled.div`
   color: ${({ theme }) => theme.colors.semantic.textDefault};
 `;
 
-const Loader = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 325px;
-  background-color: white;
-
-  &::after {
-    content: '';
-    width: 40px;
-    height: 40px;
-    border: 4px solid ${({ theme }) => theme.colors.gray.gray300};
-    border-top: 4px solid ${({ theme }) => theme.colors.semantic.kakaoYellow};
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
 const CategorySection = () => {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +68,7 @@ const CategorySection = () => {
     loadThemes();
   }, []);
 
-  if (loading) return <Loader />;
+  if (loading) return <Spinner />;
   if (error || themes.length === 0) return null;
 
   return (
