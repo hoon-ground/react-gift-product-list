@@ -1,5 +1,7 @@
 import styled from '@emotion/styled';
-import { categoryMockData } from '@/mocks/categories';
+import { useEffect, useState } from 'react';
+import { fetchThemes } from '@/api/theme';
+import type { Theme } from '@/types/theme';
 
 const SectionWrapper = styled.section`
   padding: ${({ theme }) => theme.spacing.spacing4};
@@ -45,12 +47,61 @@ const Label = styled.div`
   color: ${({ theme }) => theme.colors.semantic.textDefault};
 `;
 
+const Loader = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 325px;
+  background-color: white;
+
+  &::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid ${({ theme }) => theme.colors.gray.gray300};
+    border-top: 4px solid ${({ theme }) => theme.colors.semantic.kakaoYellow};
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
 const CategorySection = () => {
+  const [themes, setThemes] = useState<Theme[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const loadThemes = async () => {
+      try {
+        const data = await fetchThemes();
+        setThemes(data);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadThemes();
+  }, []);
+
+  if (loading) return <Loader />;
+  if (error || themes.length === 0) return null;
+
   return (
     <SectionWrapper>
       <Title>선물 테마</Title>
       <Grid>
-        {categoryMockData.map(({ themeId, name, image }) => (
+        {themes.map(({ themeId, name, image }) => (
           <Item key={themeId}>
             <Image src={image} alt={name} />
             <Label>{name}</Label>
