@@ -1,16 +1,30 @@
 import styled from '@emotion/styled';
-import { useState } from 'react';
-import { productMockData } from '@/mocks/products';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ROUTE } from '@/constants/routes';
 import { useUser } from '@/contexts/UserContext';
+import { fetchProductRanking } from '@/api/product';
+import type { Product } from '@/types/product';
+import Spinner from '@/components/Spinner';
 
 const genderTabs = ['전체', '여성이', '남성이', '청소년이'] as const;
 type GenderType = (typeof genderTabs)[number];
 const rankTabs = ['받고 싶어한', '많이 선물한', '위시로 받은'];
-// TODO : 임시 하드코딩. 추후 개수 변경 가능
+
+const GENDER_MAP: Record<GenderType, string> = {
+  전체: 'ALL',
+  여성이: 'FEMALE',
+  남성이: 'MALE',
+  청소년이: 'TEEN',
+};
+
+const RANK_MAP: Record<(typeof rankTabs)[number], string> = {
+  '받고 싶어한': 'MANY_WISH',
+  '많이 선물한': 'MANY_RECEIVE',
+  '위시로 받은': 'MANY_WISH_RECEIVE',
+};
+
 const INIT_COUNT = 6;
-const FULL_COUNT = 12;
 
 const SectionWrapper = styled.section`
   margin-top: ${({ theme }) => theme.spacing.spacing6};
@@ -134,11 +148,20 @@ const ToggleButton = styled.button`
   cursor: pointer;
 `;
 
+const EmptyProduct = styled.div`
+  margin-top: ${({ theme }) => theme.spacing.spacing16};
+  text-align: center;
+`;
+
 const RankingSection = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const selectedGender = searchParams.get('gender') || '전체';
-  const selectedRank = searchParams.get('rank') || '많이 선물한';
+  const selectedGender = (searchParams.get('gender') as GenderType) || '전체';
+  const selectedRank = (searchParams.get('rank') as keyof typeof RANK_MAP) || '많이 선물한';
+  const [productList, setProductList] = useState<Product[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
   const navigate = useNavigate();
   const { user } = useUser();
 
@@ -156,24 +179,39 @@ const RankingSection = () => {
 
   const handleGenderClick = (gender: GenderType) => {
     updateSearchParam('gender', gender);
+    setIsExpanded(false);
   };
 
   const handleRankClick = (rank: string) => {
     updateSearchParam('rank', rank);
+    setIsExpanded(false);
   };
 
-  const visibleCount = isExpanded ? FULL_COUNT : INIT_COUNT;
-  const productList = Array.from({ length: FULL_COUNT }, (_, i) => ({
-    ...productMockData[0],
-    id: productMockData[0].id + i,
-  }));
+  const visibleCount = isExpanded ? productList.length : INIT_COUNT;
+
+  useEffect(() => {
+    const loadRanking = async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const data = await fetchProductRanking(GENDER_MAP[selectedGender], RANK_MAP[selectedRank]);
+        setProductList(data);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRanking();
+  }, [selectedGender, selectedRank]);
 
   return (
     <SectionWrapper>
       <Title>실시간 급상승 선물랭킹</Title>
 
       <UserGroupTab>
-        {genderTabs.map((tab: GenderType) => (
+        {genderTabs.map((tab) => (
           <UserTab
             key={tab}
             isSelected={selectedGender === tab}
@@ -197,24 +235,34 @@ const RankingSection = () => {
         ))}
       </TrendGroupTab>
 
-      <ProductGrid>
-        {productList.slice(0, visibleCount).map((item, idx) => (
-          <ProductCard
-            key={item.id}
-            onClick={() => (user ? navigate(ROUTE.ORDER(item.id)) : navigate(ROUTE.LOGIN))}
-          >
-            <Badge isTop3={idx < 3}>{idx + 1}</Badge>
-            <img src={item.imageURL} alt={item.name} />
-            <Brand>{item.brandInfo.name}</Brand>
-            <Name>{item.name}</Name>
-            <Price>
-              <strong>{item.price.sellingPrice.toLocaleString()}</strong> 원
-            </Price>
-          </ProductCard>
-        ))}
-      </ProductGrid>
+      {loading ? (
+        <Spinner />
+      ) : error || productList.length === 0 ? (
+        <EmptyProduct>상품이 없습니다.</EmptyProduct>
+      ) : (
+        <>
+          <ProductGrid>
+            {productList.slice(0, visibleCount).map((item, idx) => (
+              <ProductCard
+                key={item.id}
+                onClick={() => (user ? navigate(ROUTE.ORDER(item.id)) : navigate(ROUTE.LOGIN))}
+              >
+                <Badge isTop3={idx < 3}>{idx + 1}</Badge>
+                <img src={item.imageURL} alt={item.name} />
+                <Brand>{item.brandInfo.name}</Brand>
+                <Name>{item.name}</Name>
+                <Price>
+                  <strong>{item.price.sellingPrice.toLocaleString()}</strong> 원
+                </Price>
+              </ProductCard>
+            ))}
+          </ProductGrid>
 
-      <ToggleButton onClick={handleToggle}>{isExpanded ? '접기' : '더보기'}</ToggleButton>
+          {productList.length > INIT_COUNT && (
+            <ToggleButton onClick={handleToggle}>{isExpanded ? '접기' : '더보기'}</ToggleButton>
+          )}
+        </>
+      )}
     </SectionWrapper>
   );
 };

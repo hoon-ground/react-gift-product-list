@@ -1,5 +1,8 @@
 import styled from '@emotion/styled';
-import { categoryMockData } from '@/mocks/categories';
+import { useEffect, useState } from 'react';
+import { fetchThemes } from '@/api/theme';
+import type { Theme } from '@/types/theme';
+import Spinner from '@/components/Spinner';
 
 const SectionWrapper = styled.section`
   padding: ${({ theme }) => theme.spacing.spacing4};
@@ -46,11 +49,33 @@ const Label = styled.div`
 `;
 
 const CategorySection = () => {
+  const [themes, setThemes] = useState<Theme[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const loadThemes = async () => {
+      try {
+        const data = await fetchThemes();
+        setThemes(data);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadThemes();
+  }, []);
+
+  if (loading) return <Spinner />;
+  if (error || themes.length === 0) return null;
+
   return (
     <SectionWrapper>
       <Title>선물 테마</Title>
       <Grid>
-        {categoryMockData.map(({ themeId, name, image }) => (
+        {themes.map(({ themeId, name, image }) => (
           <Item key={themeId}>
             <Image src={image} alt={name} />
             <Label>{name}</Label>
