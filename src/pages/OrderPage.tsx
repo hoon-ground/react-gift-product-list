@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from '@emotion/styled';
-import { useState } from 'react';
-import { productMockData } from '@/mocks/products';
+import { useEffect, useState } from 'react';
 import { messageCardMockData } from '@/mocks/messageCards';
 import { messageRequiredValidator, nameRequiredValidator } from '@/utils/validator';
 import OrderField from '@/components/OrderField';
@@ -9,6 +8,11 @@ import { ROUTE } from '@/constants/routes';
 import { useForm } from 'react-hook-form';
 import RecipientModal, { type Recipient } from '@/components/RecipientModal';
 import { zIndex } from '@/constants/zIndex';
+import { fetchProductSummary } from '@/api/product';
+import type { ProductSummary } from '@/types/product';
+import { useUser } from '@/contexts/UserContext';
+import { toast, ToastContainer } from 'react-toastify';
+import { AxiosError } from 'axios';
 
 const Wrapper = styled.div`
   padding: ${({ theme }) => theme.spacing.spacing4};
@@ -146,12 +150,30 @@ type FormValues = {
 
 const OrderPage = () => {
   const { productId } = useParams();
-  const product = productMockData.find((p) => p.id === Number(productId));
+  const navigate = useNavigate();
+  const { user } = useUser();
+
+  const [product, setProduct] = useState<ProductSummary | null>(null);
   const [selectedCardId, setSelectedCardId] = useState(messageCardMockData[0].id);
   const selectedCard = messageCardMockData.find((c) => c.id === selectedCardId);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadProduct = async () => {
+      try {
+        if (!productId) return;
+        const data = await fetchProductSummary(Number(productId));
+        setProduct(data);
+      } catch (error: unknown) {
+        const err = error as AxiosError<{ data: { message: string } }>;
+        const msg = err.response?.data?.data?.message || '상품 정보를 불러올 수 없습니다.';
+        toast.error(msg);
+        navigate(ROUTE.MAIN);
+      }
+    };
+    loadProduct();
+  }, [productId, navigate]);
 
   const {
     register,
@@ -161,7 +183,7 @@ const OrderPage = () => {
   } = useForm<FormValues>({
     defaultValues: {
       message: selectedCard?.defaultTextMessage || '',
-      sender: '',
+      sender: user?.name || '',
     },
     mode: 'onBlur',
     reValidateMode: 'onChange',
@@ -266,19 +288,17 @@ const OrderPage = () => {
             <img src={product.imageURL} alt={product.name} />
             <div>
               <div>{product.name}</div>
-              <div>{product.brandInfo.name}</div>
+              <div>{product.brandName}</div>
               <div>
-                <strong>{product.price.sellingPrice.toLocaleString()}원</strong>
+                <strong>{product.price.toLocaleString()}원</strong>
               </div>
             </div>
           </ProductInfo>
         </Section>
 
         <OrderButton type="submit">
-          {(
-            product.price.sellingPrice * recipients.reduce((sum, r) => sum + r.quantity, 0)
-          ).toLocaleString()}
-          원 주문하기
+          {(product.price * recipients.reduce((sum, r) => sum + r.quantity, 0)).toLocaleString()}원
+          주문하기
         </OrderButton>
       </form>
 
@@ -292,6 +312,8 @@ const OrderPage = () => {
           }}
         />
       )}
+
+      <ToastContainer position="top-center" autoClose={2000} hideProgressBar />
     </Wrapper>
   );
 };
