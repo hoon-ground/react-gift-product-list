@@ -10,6 +10,8 @@ import RecipientModal, { type Recipient } from '@/components/RecipientModal';
 import { zIndex } from '@/constants/zIndex';
 import { fetchProductSummary } from '@/api/product';
 import type { ProductSummary } from '@/types/product';
+import { postOrder } from '@/api/order';
+import type { OrderRequest } from '@/types/order';
 import { useUser } from '@/contexts/UserContext';
 import { toast, ToastContainer } from 'react-toastify';
 import { AxiosError } from 'axios';
@@ -195,17 +197,48 @@ const OrderPage = () => {
     }
   }, [user, setValue]);
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (form: FormValues) => {
     if (!product) return;
+
+    if (recipients.length === 0) {
+      toast.error('받는 사람이 없습니다.');
+      return;
+    }
 
     alert(
       `주문이 완료되었습니다.\n` +
         `상품명: ${product.name}\n` +
         `구매 수량: ${recipients.reduce((sum, r) => sum + r.quantity, 0)}\n` +
-        `발신자 이름: ${data.sender}\n` +
-        `메시지: ${data.message}`
+        `발신자 이름: ${form.sender}\n` +
+        `메시지: ${form.message}`
     );
-    navigate(ROUTE.MAIN);
+
+    try {
+      const payload: OrderRequest = {
+        productId: product.id,
+        message: form.message,
+        messageCardId: String(selectedCardId),
+        ordererName: form.sender,
+        receivers: recipients.map((r) => ({
+          name: r.name,
+          phoneNumber: r.phone,
+          quantity: r.quantity,
+        })),
+      };
+
+      await postOrder(payload);
+      navigate(ROUTE.MAIN);
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ data: { message: string } }>;
+      const status = err.response?.status;
+      const msg = err.response?.data?.data?.message || '주문에 실패했습니다.';
+
+      if (status === 401) {
+        navigate(ROUTE.LOGIN);
+      } else {
+        toast.error(msg);
+      }
+    }
   };
 
   if (!product) {
