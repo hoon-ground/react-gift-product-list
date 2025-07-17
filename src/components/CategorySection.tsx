@@ -68,8 +68,12 @@ const CategorySection = () => {
     loadThemes();
   }, []);
 
-  if (loading) return <Spinner />;
-  if (error || themes.length === 0) return null;
+  if (loading) {
+    return <Spinner />;
+  }
+  if (error || themes.length === 0) {
+    return null;
+  }
 
   return (
     <SectionWrapper>

@@ -180,7 +180,9 @@ const OrderPage = () => {
     navigate(ROUTE.MAIN);
   };
 
-  if (!product) return <div>상품을 찾을 수 없습니다.</div>;
+  if (!product) {
+    return <div>상품을 찾을 수 없습니다.</div>;
+  }
 
   return (
     <Wrapper>
