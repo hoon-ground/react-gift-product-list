@@ -183,11 +183,17 @@ const OrderPage = () => {
   } = useForm<FormValues>({
     defaultValues: {
       message: selectedCard?.defaultTextMessage || '',
-      sender: user?.name || '',
+      sender: '',
     },
     mode: 'onBlur',
     reValidateMode: 'onChange',
   });
+
+  useEffect(() => {
+    if (user?.name) {
+      setValue('sender', user.name);
+    }
+  }, [user, setValue]);
 
   const onSubmit = (data: FormValues) => {
     if (!product) return;
