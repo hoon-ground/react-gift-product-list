@@ -1,55 +1,34 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-
-interface User {
-  email: string;
-}
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { getUserInfo, setUserInfo, clearUserInfo, type UserInfo } from '@/utils/storage';
 
 interface UserContextType {
-  user: User | null;
-  login: (user: User) => void;
+  user: UserInfo | null;
+  login: (user: UserInfo) => void;
   logout: () => void;
   isLoading: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const isUser = (obj: unknown): obj is User => {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'email' in obj &&
-    typeof (obj as { email: unknown }).email === 'string'
-  );
-};
-
-export const UserProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const UserProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
-
-    try {
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        if (isUser(parsed)) {
-          setUser(parsed);
-        }
-      }
-    } catch (err) {
-      console.warn('유저 파싱 실패', err);
+    const storedUser = getUserInfo();
+    if (storedUser?.email && storedUser?.authToken) {
+      setUser(storedUser);
     }
-
     setIsLoading(false);
   }, []);
 
-  const login = (user: User) => {
-    sessionStorage.setItem('user', JSON.stringify(user));
+  const login = (user: UserInfo) => {
+    setUserInfo(user);
     setUser(user);
   };
 
   const logout = () => {
-    sessionStorage.removeItem('user');
+    clearUserInfo();
     setUser(null);
   };
 

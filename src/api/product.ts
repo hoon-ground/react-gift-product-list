@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance';
-import type { Product } from '@/types/product';
+import type { Product, ProductSummary } from '@/types/product';
 
 export const fetchProductRanking = async (
   targetType: string,
@@ -11,5 +11,10 @@ export const fetchProductRanking = async (
       rankType,
     },
   });
+  return res.data.data;
+};
+
+export const fetchProductSummary = async (productId: number): Promise<ProductSummary> => {
+  const res = await axiosInstance.get(`/products/${productId}/summary`);
   return res.data.data;
 };
