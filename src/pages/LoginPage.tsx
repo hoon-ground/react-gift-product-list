@@ -5,6 +5,10 @@ import { useUser } from '@/contexts/UserContext';
 import ErrorMessage from '@/components/ErrorMessage';
 import { ROUTE } from '@/constants/routes';
 import { useForm } from 'react-hook-form';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { loginRequest } from '@/api/auth';
+import { AxiosError } from 'axios';
 
 const Wrapper = styled.section`
   display: flex;
@@ -85,11 +89,18 @@ const LoginPage = () => {
     reValidateMode: 'onChange',
   });
 
-  const onSubmit = ({ email }: FormValues) => {
-    login({ email });
+  const onSubmit = async ({ email, password }: FormValues) => {
+    try {
+      const data = await loginRequest({ email, password });
+      login(data);
 
-    const from = location.state?.from?.pathname || ROUTE.MAIN;
-    navigate(from, { replace: true });
+      const from = location.state?.from?.pathname || ROUTE.MAIN;
+      navigate(from, { replace: true });
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ data: { message: string } }>;
+      const message = err.response?.data?.data?.message || '로그인에 실패했습니다.';
+      toast.error(message);
+    }
   };
 
   return (
@@ -115,6 +126,8 @@ const LoginPage = () => {
           로그인
         </Button>
       </Form>
+
+      <ToastContainer position="top-center" autoClose={2000} hideProgressBar />
     </Wrapper>
   );
 };
